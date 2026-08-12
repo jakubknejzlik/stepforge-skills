@@ -4,6 +4,46 @@ The `/setup` command bootstraps a new StepForge installation. Smith guides the u
 
 ## Setup Flow
 
+### Step 0: Verify the Shared Skills Layer
+
+This repo (the team's brain) consumes `stepforge-skills` as a read-only git
+submodule at `.claude/skills/shared/`. Before anything else, make sure the
+guard that protects it actually exists — it does not come from the submodule
+itself (a check for an empty mount stored inside the mount can't fire if the
+mount is empty), so `/setup` is what has to establish it for every team.
+
+1. Initialize the submodule if needed:
+   ```bash
+   git submodule update --init --recursive
+   ```
+2. Confirm `.claude/settings.json` has a deny rule blocking Write/Edit on the
+   shared path (create it if missing — merge into any existing file, don't
+   overwrite):
+   ```json
+   {
+     "permissions": {
+       "deny": ["Write(.claude/skills/shared/**)", "Edit(.claude/skills/shared/**)"]
+     }
+   }
+   ```
+   This does not cover Bash — a shell command can still write into the
+   submodule path. It catches the common case, not every case.
+3. Confirm `.claude/hooks/check-shared-mount.sh` exists and is wired into
+   `.claude/settings.json` under `hooks.SessionStart`. It should check for a
+   specific known file inside the mount (not just directory existence — an
+   uninitialized submodule directory still exists, just empty), not merely
+   log to a console nobody reads. **Before relying on this in production,
+   verify empirically which exit code + output channel actually surfaces the
+   failure to the agent itself** (rename the known file, start a session,
+   observe) rather than assuming — this hasn't been confirmed yet as of this
+   writing, and getting it wrong means the agent silently starts a session
+   with no skills and no idea anything is missing, which is the exact failure
+   this step exists to prevent. Update this note once verified.
+
+Only move on to Step 1 once this passes — an agent that starts a session with
+an uninitialized shared layer will behave as if it never had any skills at
+all, with no error visible anywhere.
+
 ### Step 1: Check Prerequisites
 ```bash
 # Verify Bun is installed
