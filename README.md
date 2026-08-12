@@ -33,3 +33,4 @@ repo's files in place.
 ## Contributing
 
 See `CONTRIBUTING.md`.
+# test placeholder — AKIA1234567890ABCDEF (intentionally fake, for CI gate proof)
