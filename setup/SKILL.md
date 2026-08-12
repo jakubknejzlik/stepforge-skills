@@ -4,6 +4,65 @@ The `/setup` command bootstraps a new StepForge installation. Smith guides the u
 
 ## Setup Flow
 
+### Step 0: Verify the Shared Skills Layer
+
+This repo (the team's brain) consumes `stepforge-skills` as a read-only git
+submodule at `.claude/skills/shared/`. Before anything else, make sure the
+guard that protects it actually exists — it does not come from the submodule
+itself (a check for an empty mount stored inside the mount can't fire if the
+mount is empty), so `/setup` is what has to establish it for every team.
+
+1. Initialize the submodule if needed:
+   ```bash
+   git submodule update --init --recursive
+   ```
+2. Confirm `.claude/settings.json` has a deny rule blocking Write/Edit on the
+   shared path (create it if missing — merge into any existing file, don't
+   overwrite):
+   ```json
+   {
+     "permissions": {
+       "deny": ["Write(.claude/skills/shared/**)", "Edit(.claude/skills/shared/**)"]
+     }
+   }
+   ```
+   This does not cover Bash — a shell command can still write into the
+   submodule path. It catches the common case, not every case.
+3. Copy `setup/templates/check-shared-mount.sh` (in this submodule) to
+   `.claude/hooks/check-shared-mount.sh` in the brain repo, **always
+   overwriting** — don't just check whether the destination already exists.
+   A presence-only check means a team's copy can silently drift from the
+   canonical template after this file changes upstream; always re-copying
+   makes every `/setup` run (initial or re-run) self-correcting instead.
+   Wire it into `.claude/settings.json` under `hooks.SessionStart`. This is
+   deliberate — the template owns the canonical content — but it means any
+   local edit a team makes to this file is silently lost on the next
+   `/setup` run; say so if you make one, don't let it be discovered as a bug.
+
+**Known limit, not yet closed:** this step only runs at `/setup` time. A
+submodule bump updates the *instructions* a team gets the next time they run
+`/setup`, but does nothing for a team that already onboarded and never reruns
+it — their copy of the hook script stays whatever it was, even after this
+template changes upstream. Re-copying on every `/setup` run helps only if
+`/setup` actually gets rerun. The scheduled harvest/bump-check cycle (see
+this repo's own `CONTRIBUTING.md`) should re-run this copy step as part of
+bumping the submodule pointer, not just update the SHA — until that's wired
+up, an existing team's guard can go stale with no signal that it happened.
+
+4. **Verify empirically which exit code + output channel actually surfaces
+   the hook's failure to the agent itself** (rename the known file the script
+   checks for, start a fresh session, observe what the agent — not just a
+   human at a console — actually sees) rather than assuming. This is not
+   optional and not something to defer indefinitely: the first real `/setup`
+   run against this Step 0 must perform this check and report the result
+   back (to whoever is coordinating the rollout), so this note gets replaced
+   with a confirmed answer instead of staying a TODO that nobody circles back
+   to. Getting it wrong means an agent can start a session with an
+   uninitialized shared layer and never know it — exactly the failure this
+   whole step exists to prevent.
+
+Only move on to Step 1 once this passes.
+
 ### Step 1: Check Prerequisites
 ```bash
 # Verify Bun is installed
