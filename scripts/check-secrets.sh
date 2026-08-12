@@ -9,13 +9,21 @@ set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
 
 FILES=$(git ls-files | grep -v '^\.git')
+if [ -z "$FILES" ]; then
+  echo "check-secrets: FAILED — git ls-files returned no tracked files. Refusing to report a pass with nothing scanned." >&2
+  exit 1
+fi
 FOUND=0
 
 check() {
   local label="$1"
   local pattern="$2"
   local matches
-  matches=$(echo "$FILES" | xargs grep -nE "$pattern" 2>/dev/null || true)
+  # -r/--no-run-if-empty: without it, an empty $FILES still invokes grep once
+  # with no file args, which reads real stdin instead of scanning nothing —
+  # a silent false-pass, not caught by $FILES already being checked above
+  # for every call site that might slip through.
+  matches=$(echo "$FILES" | xargs -r grep -nE "$pattern" 2>/dev/null || true)
   if [ -n "$matches" ]; then
     echo "FAIL: $label"
     echo "$matches"
