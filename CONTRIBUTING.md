@@ -25,6 +25,22 @@ positive, get explicit maintainer sign-off before overriding it.
 
 This should also run as a CI check on every PR, not just locally before push.
 
+**Known scope limits of this gate — read before treating a green run as
+"nothing sensitive in this repo":**
+- It scans `git ls-files` at HEAD only. It does not scan git history, and it
+  does not scan open/closed PR refs. A GitHub PR's commits stay reachable via
+  `refs/pull/<n>/head` even after the branch is deleted and the PR is closed
+  — the gate has no visibility into that. If something sensitive is ever
+  pushed to a branch here, closing the PR and deleting the branch does **not**
+  remove it from the repo; treat it as permanently public and escalate to the
+  maintainer for an actual purge, not a revert.
+- Only the `AKIA...` pattern has been empirically proven to trigger a real CI
+  failure (see the closed test PR #1 in this repo's history for the proof).
+  The other six patterns are structurally the same kind of check but were not
+  each individually fired in a red run — don't read "the gate passed" as "all
+  seven shapes were verified," only as "the mechanism runs and catches at
+  least one real shape correctly."
+
 ### 2. Human review: "would I be fine with anyone reading this?"
 
 The mechanical scan only catches known *shapes*. It cannot judge whether a
