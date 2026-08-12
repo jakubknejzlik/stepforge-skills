@@ -34,7 +34,10 @@ mount is empty), so `/setup` is what has to establish it for every team.
    A presence-only check means a team's copy can silently drift from the
    canonical template after this file changes upstream; always re-copying
    makes every `/setup` run (initial or re-run) self-correcting instead.
-   Wire it into `.claude/settings.json` under `hooks.SessionStart`.
+   Wire it into `.claude/settings.json` under `hooks.SessionStart`. This is
+   deliberate — the template owns the canonical content — but it means any
+   local edit a team makes to this file is silently lost on the next
+   `/setup` run; say so if you make one, don't let it be discovered as a bug.
 
 **Known limit, not yet closed:** this step only runs at `/setup` time. A
 submodule bump updates the *instructions* a team gets the next time they run
