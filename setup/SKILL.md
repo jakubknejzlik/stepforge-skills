@@ -49,17 +49,22 @@ this repo's own `CONTRIBUTING.md`) should re-run this copy step as part of
 bumping the submodule pointer, not just update the SHA — until that's wired
 up, an existing team's guard can go stale with no signal that it happened.
 
-4. **Verify empirically which exit code + output channel actually surfaces
-   the hook's failure to the agent itself** (rename the known file the script
-   checks for, start a fresh session, observe what the agent — not just a
-   human at a console — actually sees) rather than assuming. This is not
-   optional and not something to defer indefinitely: the first real `/setup`
-   run against this Step 0 must perform this check and report the result
-   back (to whoever is coordinating the rollout), so this note gets replaced
-   with a confirmed answer instead of staying a TODO that nobody circles back
-   to. Getting it wrong means an agent can start a session with an
-   uninitialized shared layer and never know it — exactly the failure this
-   whole step exists to prevent.
+4. **Exit-code / output-channel behavior — partially confirmed, one gap
+   remains.** Confirmed 2026-08-18 on a real deployment (stepforge-brain,
+   commit `e123294`): on success (`exit 0`), the hook's stdout message
+   *does* reach the agent's own context, not just a console — observed
+   directly as a `SessionStart:resume hook success: ...` entry in the
+   agent's context at session start. The write-guard was also confirmed
+   working the same session: an `Edit` attempt on a file under
+   `.claude/skills/shared/` was rejected with `"File is in a directory that
+   is denied by your permission settings."`
+
+   **Still open:** the failure path (`exit 1`, mount actually broken/empty)
+   has not yet been observed — the confirmation above happened on a healthy
+   mount. Don't assume the failure path behaves the same as the success
+   path just because the success path is now confirmed; verify it
+   separately (break the known-file check, start a fresh session, observe)
+   before treating this as fully closed.
 
 Only move on to Step 1 once this passes.
 
