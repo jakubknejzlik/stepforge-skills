@@ -49,22 +49,25 @@ this repo's own `CONTRIBUTING.md`) should re-run this copy step as part of
 bumping the submodule pointer, not just update the SHA — until that's wired
 up, an existing team's guard can go stale with no signal that it happened.
 
-4. **Exit-code / output-channel behavior — partially confirmed, one gap
-   remains.** Confirmed 2026-08-18 on a real deployment (stepforge-brain,
-   commit `e123294`): on success (`exit 0`), the hook's stdout message
-   *does* reach the agent's own context, not just a console — observed
-   directly as a `SessionStart:resume hook success: ...` entry in the
-   agent's context at session start. The write-guard was also confirmed
-   working the same session: an `Edit` attempt on a file under
-   `.claude/skills/shared/` was rejected with `"File is in a directory that
-   is denied by your permission settings."`
+4. **Exit-code / output-channel behavior — confirmed for the path we
+   actually use; we don't depend on the other one.** Confirmed 2026-08-18 on
+   a real deployment (stepforge-brain, commit `e123294`): on success (`exit
+   0`), the hook's stdout message *does* reach the agent's own context, not
+   just a console — observed directly as a `SessionStart:resume hook
+   success: ...` entry in the agent's context at session start. The
+   write-guard was also confirmed working the same session: an `Edit`
+   attempt on a file under `.claude/skills/shared/` was rejected with
+   `"File is in a directory that is denied by your permission settings."`
 
-   **Still open:** the failure path (`exit 1`, mount actually broken/empty)
-   has not yet been observed — the confirmation above happened on a healthy
-   mount. Don't assume the failure path behaves the same as the success
-   path just because the success path is now confirmed; verify it
-   separately (break the known-file check, start a fresh session, observe)
-   before treating this as fully closed.
+   The template (`setup/templates/check-shared-mount.sh`) deliberately
+   **always exits 0**, even on failure, and reports through stdout either
+   way. Nothing consumes a non-zero exit code from this hook, so there's no
+   reason to route the failure message through `exit 1` — a path nobody has
+   confirmed actually reaches the agent — when the confirmed `exit 0` +
+   stdout path is right there. This isn't "the failure path is unverified,"
+   it's "the failure path is irrelevant by design": the check always
+   succeeds at the shell level and always reports its finding on stdout,
+   so the one channel that's proven to work is the only one it ever uses.
 
 Only move on to Step 1 once this passes.
 
